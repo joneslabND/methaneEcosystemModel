@@ -16,23 +16,35 @@ timeStepCH4<-function(time,y,params){
 	with(as.list(params),{
 		# state variables
 		P=y[1]	# CH4 in profundal sediment
-		L=y[2]	# CH4 in littoral sediment
-		E=y[3]	# CH4 in epilimnion
+		Psom=y[2]	# sediment organic matter in profundal sediment
+		L=y[3]	# CH4 in littoral sediment
+		Lsom=y[4]	# sediment organic matter in littoral sediment
+		E=y[5]	# CH4 in epilimnion
 	
 		# forcing data
 		GPP=varied_GPP(time)
 		atmCH4=varied_atmCH4(time)
 		k=varied_k(time)
 		
-		#dPdt=production-diffusion; assuming no ebullition
-		#		production=f(GPP,settling,yield)
+		#dP.dt=production-diffusion; assuming no ebullition
+		#		production=f(Psom,yield)
 		#		diffusion=f(???)
-		dP.dt=Ap*(GPP*zmix*sed*yield-Pdiff*(P/Vp-E/Ve))
-		#dLdt=production-diffusion-ebullition
-		#		production=f(GPP,settling,yield)
+		dP.dt=maxPsomUptake*Psom/(kPprod*Vp+Psom)*yield-Pdiff*(P/Vp-E/Ve)*Ap
+		#dPsom.dt=settling material-conversion to methane-permanent burial
+		#		settling=f(GPP,settling)
+		#		conversion=f(Psom)
+		#		burial=f(Psom)
+		dPsom.dt=Ap*GPP*zmix*sed-maxPsomUptake*Psom/(kPprod*Vp+Psom)-Psom*permBuryP
+		#dL.dt=production-diffusion-ebullition
+		#		production=f(Lsom,yield)
 		#		diffusion=f(E,L,???)
 		#		ebullition=f(L,???)
-		dL.dt=Al*(GPP*zmix*sed*yield-Ldiff*(L/Vl-E/Ve))-ebull*L
+		dL.dt=maxLsomUptake*Lsom/(kLprod*Vl+Lsom)*yield-Ldiff*(L/Vl-E/Ve)*Al-ebull*L
+		#dLsom.dt=settling material - conversion to methane - permanent burial
+		#		settling=f(GPP,settling)
+		#		conversion=f(Lsom)
+		#		burial=f(Lsom)
+		dLsom.dt=Al*GPP*zmix*sed-maxLsomUptake*Lsom/(kLprod*Vl+Lsom)-Lsom*permBuryL
 		#dEdt=production+diffusion (littoral and profundal)-atm. diffusion-oxidation
 		#		production=f(GPP)????
 		#		diffusion=f(E,L,P,???)
@@ -40,7 +52,7 @@ timeStepCH4<-function(time,y,params){
 		#		oxidation=f(E)
 		dE.dt=GPP*Eprod*Ve+Pdiff*(P/Vp-E/Ve)*Ap+Ldiff*(L/Vl-E/Ve)*Al-k*(E/Ve-atmCH4)*Ae-oxE*E
 	
-		list(c(dP.dt,dL.dt,dE.dt))
+		list(c(dP.dt,dPsom.dt,dL.dt,dLsom.dt,dE.dt))
 	})
 }
 
@@ -55,13 +67,19 @@ Vl=Al*activeLayerDepth		# Volume of "active" littoral sediments; [m3]
 zmix=2	# Mixed layer depth of lake; [m]
 Ve=Ae*zmix		# Volume of epilimnion; [m3]
 sed=0.3		# Proportion of areal GPP that settles to sediments; []
-yield=0.25	# Molar yield of CH4 from algal C; [mol CH4 (mol algal C)-1]
+maxPsomUptake=0.004	# Maximum rate of Psom uptake; [d-1]
+kPprod=10		# half-saturation constant for methane production in profundal; [mol algal C m-3]
+maxLsomUptake=0.004	# Maximum rate of Psom uptake; [d-1]
+kLprod=10		# half-saturation constant for methane production in profundal; [mol algal C m-3]
+permBuryP=0.1	# permanent burial of Psom; [d-1]
+permBuryL=0.1	# permanent burial of Lsom; [d-1]
+yield=0.25		# Molar yield of CH4 from algal C; [mol CH4 (mol algal C)-1]
 Pdiff=0.001	# Mass transfer coefficient/diffusivity???; [m d-1]
 Ldiff=0.005	# Mass transfer coefficient/diffusivity???; [m d-1]
 ebull=0.1		# Fraction of production released as ebullition [d-1] -> could be a more complex function that causes ebullition at a critical saturating concentration; could also be probabalistic
 Eprod=0.0001	# Epilimnetic CH4 production per unit GPP; [mol CH4 (mol C)-1]
 oxE=0.9	# Fraction of epilimnion CH4 lost to oxidation; [d-1]
-params=c(Vp=Vp,Vl=Vl,Ve=Ve,Ap=Ap,Al=Al,Ae=Ae,zmix=zmix,sed=sed,yield=yield,Pdiff=Pdiff,Ldiff=Ldiff,ebull=ebull,Eprod=Eprod,oxE)
+params=c(Vp=Vp,Vl=Vl,Ve=Ve,Ap=Ap,Al=Al,Ae=Ae,zmix=zmix,sed=sed,maxPsomUptake=maxPsomUptake,kPprod=kPprod,maxLsomUptake=maxLsomUptake,kLprod=kLprod,permBuryP=permBuryP,permBuryL=permBuryL,yield=yield,Pdiff=Pdiff,Ldiff=Ldiff,ebull=ebull,Eprod=Eprod,oxE)
 
 
 #### forcing data (GPP, atmCH4, k) and run parameters
@@ -96,14 +114,18 @@ if(is.null(obs_k)){
 
 
 # initial values
-init=c(P=0.2*Vp,L=0.2*Vl,E=0.2*Ve)		#starting all the same (sort of like after mixis); 200 uM
+init=c(P=0.2*Vp,Psom=0,L=0.2*Vl,Lsom=0,E=0.2*Ve)		# [mol CH4] starting all the same (sort of like after mixis); 200 uM
 	
 #### integrate model
 out=ode(y=init,times=t.s,func=timeStepCH4,parms=params)
 
 #### plot output
 dev.new()
-par(mfrow=c(3,1))
-plot(out[,1],out[,2],type='l',lwd=2,xlab="Time",ylab="Profundal CH4")
-plot(out[,1],out[,3],type='l',lwd=2,xlab="Time",ylab="Littoral CH4",col='red')
-plot(out[,1],out[,4],type='l',lwd=2,xlab="Time",ylab="Epilimnion CH4",col='green')
+par(mfrow=c(5,1))
+plot(out[,1],out[,2],type='l',lwd=2,xlab="Time",ylab="Profundal CH4 [mol CH4]",col='black')
+plot(out[,1],out[,3],type='l',lwd=2,xlab="Time",ylab="Profundal OM [mol algal C]",col='black',lty=2)
+plot(out[,1],out[,4],type='l',lwd=2,xlab="Time",ylab="Littoral CH4 [mol CH4]",col='red')
+plot(out[,1],out[,5],type='l',lwd=2,xlab="Time",ylab="Littoral OM [mol algal C]",col='red',lty=2)
+plot(out[,1],out[,6],type='l',lwd=2,xlab="Time",ylab="Epilimnion CH4",col='green')
+
+print(round(out[nrow(out),],4))
