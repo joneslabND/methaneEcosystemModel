@@ -67,24 +67,25 @@ timeStepCH4<-function(time,y,params,As,Vs){
 
 
 #### Parameters
-activeLayerDepth=0.2	# Active layer depth of sediments; [m]
-deltaZ=0.25					# hypolimnion slice thickness; [m]
-N=16						# number of hypolimnion slices;
-Pdiff=0.001		# diffusivity; [m2 d-1]
-Hdiff=0.001		# diffusivity; [m2 d-1]
+zmax=6
 zmix=2	# Mixed layer depth of lake; [m]
+deltaZ=0.25					# hypolimnion slice thickness; [m]
+N=(zmax-zmix)/deltaZ			# number of hypolimnion slices;
+activeLayerDepth=0.2	# Active layer depth of sediments; [m]
+Pdiff=0.05		# diffusivity; [m2 d-1]
+Hdiff=0.15		# diffusivity; [m2 d-1]
 sed=0.3		# Proportion of areal GPP that settles to sediments; []
-maxPsomUptake=0.004	# Maximum rate of Psom uptake; [d-1]
+maxPsomUptake=0.04	# Maximum rate of Psom uptake; [d-1]
 kPprod=10		# half-saturation constant for methane production in profundal; [mol algal C m-3]
-maxLsomUptake=0.004	# Maximum rate of Psom uptake; [d-1]
+maxLsomUptake=0.04	# Maximum rate of Psom uptake; [d-1]
 kLprod=10		# half-saturation constant for methane production in profundal; [mol algal C m-3]
 permBuryP=0.1	# permanent burial of Psom; [d-1]
 permBuryL=0.1	# permanent burial of Lsom; [d-1]
 yield=0.25		# Molar yield of CH4 from algal C; [mol CH4 (mol algal C)-1]
-Ldiff=0.005		# diffusivity; [m2 d-1]
+Ldiff=0.05		# diffusivity; [m2 d-1]
 ebull=0.1		# Fraction of production released as ebullition [d-1] -> could be a more complex function that causes ebullition at a critical saturating concentration; could also be probabalistic
 Eprod=0.0001	# Epilimnetic CH4 production per unit GPP; [mol CH4 (mol C)-1]
-oxE=0.9	# Fraction of epilimnion CH4 lost to oxidation; [d-1]
+oxE=0.99		# Fraction of epilimnion CH4 lost to oxidation; [d-1]
 
 # for now an upside-down tophat shaped lake with radius of pelagic=900 m, and littoral zone 100 m wide
 As=c(rep(pi*900^2,N+1),(pi*1000^2-pi*900^2),pi*1000^2)		# interface areas; [m2]
@@ -132,15 +133,26 @@ init=rep(0,(N+5))		# [mol CH4] starting all the same (sort of like after mixis);
 out=ode(y=init,times=t.s,func=timeStepCH4,parms=params,As=As,Vs=Vs)
 
 #### plot output
-dev.new()
-par(mfrow=c(2,3))
-plot(out[,1],out[,2]/Vs[1]*1000,type='l',lwd=2,xlab="Time",ylab="Hypo. CH4 [uM CH4]",col='black')
-for(i in 2:N){
-	lines(out[,1],out[,(i+1)]/Vs[i]*1000,lwd=2,col=i)
-}
-plot(out[,1],out[,3],type='l',lwd=2,xlab="Time",ylab="Profundal OM [mol algal C]",col='black',lty=2)
-plot(out[,1],out[,4],type='l',lwd=2,xlab="Time",ylab="Littoral CH4 [mol CH4]",col='red')
-plot(out[,1],out[,5],type='l',lwd=2,xlab="Time",ylab="Littoral OM [mol algal C]",col='red',lty=2)
-plot(out[,1],out[,6],type='l',lwd=2,xlab="Time",ylab="Epilimnion CH4",col='green')
+profundalSedV=As[1]*activeLayerDepth
+littoralSedV=As[(N+2)]*activeLayerDepth
 
-print(round(out[nrow(out),],4))
+# generate concentration data in uM CH4
+outConc=out
+outConc[,2:(N+1)]=out[,2:(N+1)]/Vs[1:N]*1000
+outConc[,(N+2)]=out[,(N+2)]/profundalSedV*1000
+outConc[,(N+3)]=out[,(N+3)]/profundalSedV*1000
+outConc[,(N+4)]=out[,(N+4)]/littoralSedV*1000
+outConc[,(N+5)]=out[,(N+5)]/littoralSedV*1000
+outConc[,(N+6)]=out[,(N+6)]/Vs[(N+1)]*1000
+
+dev.new()
+par(mfrow=c(2,4))
+plot(outConc[,1],outConc[,(N+2)],type='l',lwd=2,xlab="Time",ylab="Profundal sed. CH4 [uM CH4]",col='black')
+plot(outConc[,1],outConc[,(N+3)],type='l',lwd=2,xlab="Time",ylab="Profundal OM [uM algal C]",col='black')
+plot(outConc[,1],outConc[,2],type='l',lwd=2,xlab="Time",ylab="Hypo. CH4 [uM CH4]",col='black',ylim=range(outConc[,2:(N+1)]))
+lines(outConc[,1],outConc[,(N+1)],lty=2,lwd=2)
+plot(1,1,cex=0,axes=FALSE,xlab="",ylab="")
+plot(outConc[,1],outConc[,(N+4)],type='l',lwd=2,xlab="Time",ylab="Littoral sed. CH4 [uM CH4]",col='black')
+plot(outConc[,1],outConc[,(N+5)],type='l',lwd=2,xlab="Time",ylab="Littoral OM [uM algal C]",col='black',lty=2)
+plot(outConc[,1],outConc[,(N+6)],type='l',lwd=2,xlab="Time",ylab="Epilimnion CH4 [uM CH4]",col='black')
+plot(outConc[nTimeSteps,c(2:(N+1),(N+6))],c(seq((zmax-deltaZ),zmix,-deltaZ),zmix/2),type='o',ylim=c(zmax,0),ylab="Depth (m)",xlab="uM CH4")
