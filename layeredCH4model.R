@@ -59,7 +59,7 @@ timeStepCH4<-function(time,y,params,As,Vs){
 		#		diffusion=f(E,L,P,???)
 		#		atm. diffusion=f(E,atm)
 		#		oxidation=f(E)
-		dE.dt=GPP*Eprod*Vs[(N+1)]+(1/deltaZ)*Hdiff*(E/Vs[(N+1)]-H[N]/Vs[N])*As[(N+1)]+(1/deltaZ)*Ldiff*(L/(As[(N+2)]*activeLayerDepth)-E/Vs[(N+1)])*As[(N+2)]-k*(E/Vs[(N+1)]-atmCH4)*As[(N+3)]
+		dE.dt=GPP*Eprod*Vs[(N+1)]+(1/deltaZ)*Hdiff*(E/Vs[(N+1)]-H[N]/Vs[N])*As[(N+1)]+(1/deltaZ)*Ldiff*(L/(As[(N+2)]*activeLayerDepth)-E/Vs[(N+1)])*As[(N+2)]-k*(E/Vs[(N+1)]-atmCH4)*As[(N+3)]-oxE*E
 		
 		list(c(dH.dt,dP.dt,dPsom.dt,dL.dt,dLsom.dt,dE.dt))
 	})
