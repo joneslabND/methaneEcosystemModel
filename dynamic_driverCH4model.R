@@ -1,6 +1,6 @@
 ##### Simplest CH4 ecosystem model
-##### 11-5-14
-##### WEW & SEJ
+##### 04-20-17
+##### SEJ
 
 rm(list=ls())
 
@@ -9,8 +9,10 @@ library(deSolve)
 #### set up ordinary differential equations (ODEs) in function for deSolve to use for each time step
 	# State variables:
 	#	1. CH4 in profundal sediment
-	#	2. CH4 in littoral sediment
-	#	3. CH4 in epilimnion
+	#	2. sediment organic matter in profundal sediment
+	#	3. CH4 in littoral sediment
+	#	4. sediment organic matter in littoral sediment
+	#	5. CH4 in epilimnion
 
 timeStepCH4<-function(time,y,params){
 	with(as.list(params),{
@@ -87,7 +89,7 @@ nTimeSteps=180
 t.s=1:nTimeSteps
 
 # Could load observations, model output, or set to a constant
-constant_GPP=0.1	# [mol C m-3 d-1]Jake says this is average for morris --> Stuart will remember how to do this dynamically
+constant_GPP=0.1	# [mol C m-3 d-1]Jake says this is average for morris
 constant_atmCH4=0.1	# [mol CH4 m-3]Will thinks this is about right --> We can check this and use whatever the global average is
 constant_k=0.4	# [m d-1]using a decent number for UNDERC lakes
 
@@ -121,7 +123,7 @@ out=ode(y=init,times=t.s,func=timeStepCH4,parms=params)
 
 #### plot output
 dev.new()
-par(mfrow=c(5,1))
+par(mfrow=c(3,2))
 plot(out[,1],out[,2],type='l',lwd=2,xlab="Time",ylab="Profundal CH4 [mol CH4]",col='black')
 plot(out[,1],out[,3],type='l',lwd=2,xlab="Time",ylab="Profundal OM [mol algal C]",col='black',lty=2)
 plot(out[,1],out[,4],type='l',lwd=2,xlab="Time",ylab="Littoral CH4 [mol CH4]",col='red')

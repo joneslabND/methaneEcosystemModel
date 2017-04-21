@@ -1,6 +1,6 @@
-##### Simplest CH4 ecosystem model
-##### 11-10-14
-##### WEW & SEJ
+##### Layered water column CH4 ecosystem model
+##### 04-20-17
+##### SEJ
 
 rm(list=ls())
 
